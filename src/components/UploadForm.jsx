@@ -121,7 +121,7 @@ export default function UploadForm({ onSuccess }) {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:4000/api/ai/optimize', {
+  const response = await fetch('https://aurixon-ai-backend.vercel.app/api/ai/optimize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

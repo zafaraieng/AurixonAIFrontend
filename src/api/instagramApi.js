@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API = import.meta.env.VITE_API_URL || 'https://aurixon-ai-backend.vercel.app';
 
 // Instagram account management
 export const getInstagramStatus = async () => {

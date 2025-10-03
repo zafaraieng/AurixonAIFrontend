@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import VideoCard from './VideoCard';
 import VideoModal from './VideoModal';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API = import.meta.env.VITE_API_URL || 'https://aurixon-ai-backend.vercel.app';
 
 function formatDate(ts) {
   if (!ts) return '-';
