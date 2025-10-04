@@ -1,26 +1,32 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/static-build"
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
     }
   ],
   "routes": [
     {
-      "src": "/manifest.json",
-      "headers": {
-        "Content-Type": "application/json"
-      },
-      "dest": "/public/manifest.json"
+      "src": "/assets/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|svg|png|jpg|jpeg|gif|ico|json))",
+      "dest": "/$1"
     },
     {
       "src": "/(.*)",
+      "headers": { "cache-control": "no-cache" },
       "dest": "/index.html"
     }
   ],
   "env": {
     "NODE_ENV": "production",
-    "REACT_APP_API_URL": "https://aurixon-ai-backend.vercel.app"
+    "VITE_API_URL": "https://aurixon-ai-backend.vercel.app"
   }
 }
