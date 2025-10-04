@@ -1,16 +1,21 @@
-const fs = require('fs-extra');
-const path = require('path');
+import { copy } from 'fs-extra';
+import { join, basename } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Ensure the public directory exists in the build output
-const publicDir = path.join(__dirname, 'public');
-const buildDir = path.join(__dirname, 'dist');
+const publicDir = join(__dirname, '..', 'public');
+const buildDir = join(__dirname, '..', 'dist');
 
 async function copyPublicFiles() {
   try {
     // Copy all files from public to build directory
-    await fs.copy(publicDir, buildDir, {
+    await copy(publicDir, buildDir, {
       filter: (src) => {
-        const fileName = path.basename(src);
+        const fileName = basename(src);
         return !fileName.startsWith('.') && fileName !== 'index.html';
       }
     });
