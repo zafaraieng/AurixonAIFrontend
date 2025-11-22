@@ -31,7 +31,7 @@ export default function UploadForm({ onSuccess }) {
     if (window.cloudinary) {
       cloudinaryWidgetRef.current = window.cloudinary.createUploadWidget({
         cloudName: 'dhlyn3h1y',
-        uploadPreset: 'aurixon_preset', // Placeholder, user needs to create this
+        uploadPreset: 'unsigned_upload', // User provided preset
         sources: ['local', 'url', 'camera'],
         resourceType: 'video',
         clientAllowedFormats: ['mp4', 'mov', 'avi', 'wmv'],
