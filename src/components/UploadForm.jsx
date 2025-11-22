@@ -22,10 +22,61 @@ export default function UploadForm({ onSuccess }) {
   const [optimizing, setOptimizing] = useState(false);
   const [success, setSuccess] = useState('');
   const [analysisData, setAnalysisData] = useState(null);
-  const fileInputRef = useRef(null);
+  const [analysisData, setAnalysisData] = useState(null);
   const thumbnailInputRef = useRef(null);
+  const cloudinaryWidgetRef = useRef(null);
 
-  // Update error states based on analysis
+  useEffect(() => {
+    // Initialize Cloudinary Widget
+    if (window.cloudinary) {
+      cloudinaryWidgetRef.current = window.cloudinary.createUploadWidget({
+        cloudName: 'dhlyn3h1y',
+        uploadPreset: 'aurixon_preset', // Placeholder, user needs to create this
+        sources: ['local', 'url', 'camera'],
+        resourceType: 'video',
+        clientAllowedFormats: ['mp4', 'mov', 'avi', 'wmv'],
+        maxFileSize: 1000000000, // 1GB
+        multiple: false,
+        theme: 'minimal',
+      }, (error, result) => {
+        if (!error && result && result.event === "success") {
+          console.log('Cloudinary Upload Success:', result.info);
+          handleCloudinarySuccess(result.info);
+        } else if (error) {
+          console.error('Cloudinary Widget Error:', error);
+          setError('Cloudinary upload failed: ' + (error.message || 'Unknown error'));
+        }
+      });
+    }
+  }, []);
+
+  const handleCloudinarySuccess = (info) => {
+    setVideo({
+      name: info.original_filename + '.' + info.format,
+      size: info.bytes,
+      type: 'video/' + info.format,
+      cloudinaryUrl: info.secure_url,
+      duration: info.duration
+    });
+    
+    setVideoDuration(info.duration);
+    if (info.duration <= 180) {
+      setYoutubeVideoType('short');
+    } else {
+      setYoutubeVideoType('long');
+    }
+    
+    // Reset analysis as we have a new video
+    setAnalysisData(null);
+  };
+
+  const openCloudinaryWidget = () => {
+    if (cloudinaryWidgetRef.current) {
+      cloudinaryWidgetRef.current.open();
+    } else {
+      setError('Cloudinary widget not initialized. Please refresh the page.');
+    }
+  };
   useEffect(() => {
     if (analysisData) {
       // Check if any selected platform is not eligible
@@ -48,34 +99,8 @@ export default function UploadForm({ onSuccess }) {
     return `${(bytes / Math.pow(1024, i)).toFixed( i ? 1 : 0)} ${sizes[i]}`;
   };
 
-  const handleFileSelect = async (f) => {
-    if (f) {
-      setVideo(f);
-      setAnalysisData(null); // Reset analysis when new file is selected
-      
-      // Check video duration
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.src = URL.createObjectURL(f);
-      
-      await new Promise((resolve) => {
-        video.onloadedmetadata = () => {
-          setVideoDuration(video.duration);
-          // Automatically set video type based on duration
-          if (video.duration <= 180) { // 3 minutes or less
-            setYoutubeVideoType('short');
-          } else {
-            setYoutubeVideoType('long');
-          }
-          URL.revokeObjectURL(video.src);
-          resolve();
-        };
-      });
-    } else {
-      setVideo(null);
-      setVideoDuration(0);
-    }
-  };
+  // Removed handleFileSelect as we use Cloudinary Widget now
+  // Kept handleThumbnailSelect as is
 
   const handleThumbnailSelect = (f) => {
     if (f) {
@@ -192,7 +217,14 @@ export default function UploadForm({ onSuccess }) {
     console.log('Starting upload with platforms:', platforms);
 
     const formData = new FormData();
-    formData.append('file', video);
+    // Only append file if it's a File object (not Cloudinary result) - though we primarily use Cloudinary now
+    if (video instanceof File) {
+      formData.append('file', video);
+    } else if (video.cloudinaryUrl) {
+      formData.append('cloudinaryUrl', video.cloudinaryUrl);
+      formData.append('originalFilename', video.name);
+    }
+
     if (thumbnail) formData.append('thumbnail', thumbnail);
     formData.append('title', title);
     formData.append('description', description);
@@ -274,22 +306,15 @@ export default function UploadForm({ onSuccess }) {
       </div>
 
       <div className="file-upload-container">
-        <label className="file-picker" onClick={() => fileInputRef.current?.click()}>
+        <label className="file-picker" onClick={openCloudinaryWidget}>
           <div className="file-meta">
             <div className="file-icon">▶</div>
             <div className="file-details">
-              <div className="file-name">{video ? video.name : 'Choose a video file'}</div>
-              <div className="file-meta-small">{video ? `${formatBytes(video.size)} • ${video.type || 'video'}` : 'MP4, MOV — under 2GB recommended'}</div>
+              <div className="file-name">{video ? video.name : 'Upload Video via Cloudinary'}</div>
+              <div className="file-meta-small">{video ? `${formatBytes(video.size)} • ${video.type || 'video'}` : 'Supports large video files'}</div>
             </div>
           </div>
-          <div className="small">{video ? 'Change' : 'Browse'}</div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            style={{ display: 'none' }}
-            onChange={e => handleFileSelect(e.target.files?.[0] ?? null)}
-          />
+          <div className="small">{video ? 'Change' : 'Upload'}</div>
         </label>
 
         <label className="thumbnail-picker" onClick={() => thumbnailInputRef.current?.click()}>
