@@ -1,0 +1,70 @@
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.logo-image {
+  object-fit: contain;
+  transition: all 0.3s ease;
+  border-radius: 16px;
+  filter: drop-shadow(0 4px 12px rgba(155, 200, 55, 0.2));
+}
+
+.logo-text {
+  font-weight: 800;
+  background: linear-gradient(135deg, #9bc837 0%, #c8d654 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Size variants */
+.logo-small .logo-image {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-small .logo-text {
+  font-size: 18px;
+}
+
+.logo-medium .logo-image {
+  width: 42px;
+  height: 42px;
+}
+
+.logo-medium .logo-text {
+  font-size: 24px;
+}
+
+.logo-large .logo-image {
+  width: 64px;
+  height: 64px;
+}
+
+.logo-large .logo-text {
+  font-size: 36px;
+  letter-spacing: -0.04em;
+}
+
+/* Hover effect */
+.logo-container:hover .logo-image {
+  transform: scale(1.05);
+}
+
+/* Dark mode optimization */
+@media (prefers-color-scheme: dark) {
+  .logo-text {
+    background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+  }
+}
