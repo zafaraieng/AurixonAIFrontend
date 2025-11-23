@@ -252,7 +252,12 @@ export default function UploadForm({ onSuccess }) {
           setUploadProgress(prev => ({ ...prev, [platform]: 'uploading' }));
           try {
             console.log(`Starting upload for ${platform}...`);
-            const result = await processPlatformUpload({ videoId, platform });
+            const result = await processPlatformUpload({
+              videoId,
+              platform,
+              privacyStatus,
+              videoType: youtubeVideoType
+            });
             console.log(`${platform} upload success:`, result);
             setUploadProgress(prev => ({ ...prev, [platform]: 'success' }));
             results[platform] = result;
