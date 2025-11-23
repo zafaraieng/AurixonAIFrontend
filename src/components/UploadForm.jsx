@@ -401,7 +401,7 @@ export default function UploadForm({ onSuccess }) {
           >
             {optimizing ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                <span className="spinner" /> Optimizing...
+                <span className="spinner" /> Generating Viral Title...
               </span>
             ) : '✨ AI Optimize'}
           </button>
