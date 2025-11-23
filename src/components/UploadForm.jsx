@@ -27,9 +27,9 @@ export default function UploadForm({ onSuccess }) {
   const thumbnailInputRef = useRef(null);
   const cloudinaryWidgetRef = useRef(null);
 
-  useEffect(() => {
-    // Initialize Cloudinary Widget
-    if (window.cloudinary) {
+  // Lazy initialization of Cloudinary Widget
+  const initializeCloudinaryWidget = () => {
+    if (window.cloudinary && !cloudinaryWidgetRef.current) {
       cloudinaryWidgetRef.current = window.cloudinary.createUploadWidget({
         cloudName: 'dhlyn3h1y',
         uploadPreset: 'unsigned_upload', // User provided preset
@@ -49,6 +49,23 @@ export default function UploadForm({ onSuccess }) {
         }
       });
     }
+  };
+
+  useEffect(() => {
+    // Try to initialize immediately
+    initializeCloudinaryWidget();
+
+    // Also set up a poller to check for the script loading
+    const intervalId = setInterval(() => {
+      if (window.cloudinary && !cloudinaryWidgetRef.current) {
+        initializeCloudinaryWidget();
+      }
+      if (cloudinaryWidgetRef.current) {
+        clearInterval(intervalId);
+      }
+    }, 500);
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleCloudinarySuccess = (info) => {
@@ -72,10 +89,14 @@ export default function UploadForm({ onSuccess }) {
   };
 
   const openCloudinaryWidget = () => {
+    if (!cloudinaryWidgetRef.current) {
+      initializeCloudinaryWidget();
+    }
+
     if (cloudinaryWidgetRef.current) {
       cloudinaryWidgetRef.current.open();
     } else {
-      setError('Cloudinary widget not initialized. Please refresh the page.');
+      setError('Cloudinary widget is still loading. Please try again in a moment.');
     }
   };
   useEffect(() => {
