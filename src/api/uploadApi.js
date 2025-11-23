@@ -4,7 +4,7 @@ const API = import.meta.env.VITE_API_URL || 'https://aurixon-ai-backend.vercel.a
 export const validateVideo = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
-  
+
   const res = await axios.post(`${API}/api/validate`, formData, {
     withCredentials: true,
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -12,11 +12,15 @@ export const validateVideo = async (file) => {
   return res.data;
 };
 
-export const uploadVideo = async (payload) => {
-  // payload: FormData
-  const res = await axios.post(`${API}/api/uploads`, payload, {
+export const uploadVideo = async (payload, isJson = false) => {
+  const endpoint = isJson ? `${API}/api/save-video` : `${API}/api/uploads`;
+  const headers = isJson
+    ? { 'Content-Type': 'application/json' }
+    : { 'Content-Type': 'multipart/form-data' };
+
+  const res = await axios.post(endpoint, payload, {
     withCredentials: true,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers
   });
   return res.data;
 };
@@ -28,7 +32,7 @@ export const getSchedules = async () => {
 
 export async function fetchUploads() {
   try {
-    const res = await axios.get(`${API}/api/uploads`, { 
+    const res = await axios.get(`${API}/api/uploads`, {
       withCredentials: true
     });
     console.log('API Response:', res.data); // Debug log

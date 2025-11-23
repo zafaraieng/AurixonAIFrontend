@@ -214,39 +214,43 @@ export default function UploadForm({ onSuccess }) {
     setUploading(true);
     setError('');
 
-    console.log('Starting upload with platforms:', platforms);
-
-    const formData = new FormData();
-    // Only append file if it's a File object (not Cloudinary result) - though we primarily use Cloudinary now
-    if (video instanceof File) {
-      formData.append('file', video);
-    } else if (video.cloudinaryUrl) {
-      formData.append('cloudinaryUrl', video.cloudinaryUrl);
-      formData.append('originalFilename', video.name);
-    }
-
-    if (thumbnail) formData.append('thumbnail', thumbnail);
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('tags', tags);
-    formData.append('privacyStatus', privacyStatus);
-    formData.append('platforms', JSON.stringify(platforms));
-    // Ensure videoType is properly set for YouTube
-    if (platforms.youtube) {
-      formData.append('videoType', youtubeVideoType);
-    }
-    if (publishTime) formData.append('publishTime', new Date(publishTime).toISOString());
-
     try {
-      console.log('FormData contents:', {
-        title: title,
-        description: description.length,
-        hasThumbnail: !!thumbnail,
-        platforms: platforms,
-        privacy: privacyStatus
-      });
+      let response;
 
-      const response = await uploadVideo(formData);
+      if (video.cloudinaryUrl) {
+        // Send JSON for Cloudinary URL
+        const payload = {
+          cloudinaryUrl: video.cloudinaryUrl,
+          originalFilename: video.name,
+          title,
+          description,
+          tags,
+          publishTime,
+          privacyStatus,
+          platforms: JSON.stringify(platforms),
+          videoType: 'long'
+        };
+
+        console.log('Sending Cloudinary URL to backend:', payload);
+        response = await uploadVideo(payload, true); // Pass true for isJson
+      } else {
+        // Standard file upload
+        const formData = new FormData();
+        formData.append('file', video);
+        if (thumbnail) {
+          formData.append('thumbnail', thumbnail);
+        }
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('tags', tags);
+        formData.append('publishTime', publishTime);
+        formData.append('privacyStatus', privacyStatus);
+        formData.append('platforms', JSON.stringify(platforms));
+        formData.append('videoType', 'long');
+
+        response = await uploadVideo(formData);
+      }
+
       console.log('Upload response:', response); // Debug log
 
       // Handle TikTok upload response
