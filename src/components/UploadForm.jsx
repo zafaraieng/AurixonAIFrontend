@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { uploadVideo, validateVideo } from '../api/uploadApi';
+import { uploadVideo, validateVideo, saveVideoMetadata, processPlatformUpload } from '../api/uploadApi';
 import { optimizeContent } from '../api/aiApi';
 import ContentAnalysis from './ContentAnalysis';
 import './UploadForm.css';
@@ -18,6 +18,7 @@ export default function UploadForm({ onSuccess }) {
   const [videoDuration, setVideoDuration] = useState(0);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({}); // Track progress per platform
   const [analyzing, setAnalyzing] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [success, setSuccess] = useState('');
@@ -205,7 +206,6 @@ export default function UploadForm({ onSuccess }) {
       return;
     }
 
-    // Ensure at least one platform is selected
     if (!Object.values(platforms).some(Boolean)) {
       setError('Please select at least one platform');
       return;
@@ -213,12 +213,13 @@ export default function UploadForm({ onSuccess }) {
 
     setUploading(true);
     setError('');
+    setUploadProgress({});
 
     try {
-      let response;
-
       if (video.cloudinaryUrl) {
-        // Send JSON for Cloudinary URL
+        // --- NEW CLIENT-SIDE ORCHESTRATION FLOW ---
+
+        // 1. Save Metadata
         const payload = {
           cloudinaryUrl: video.cloudinaryUrl,
           originalFilename: video.name,
@@ -231,10 +232,61 @@ export default function UploadForm({ onSuccess }) {
           videoType: 'long'
         };
 
-        console.log('Sending Cloudinary URL to backend:', payload);
-        response = await uploadVideo(payload, true); // Pass true for isJson
+        console.log('Saving metadata...', payload);
+        const metaRes = await saveVideoMetadata(payload);
+
+        if (!metaRes.success || !metaRes.video?._id) {
+          throw new Error('Failed to save video metadata');
+        }
+
+        const videoId = metaRes.video._id;
+        const selectedPlatforms = Object.entries(platforms)
+          .filter(([_, isSelected]) => isSelected)
+          .map(([platform]) => platform);
+
+        // 2. Process each platform sequentially
+        const results = {};
+        let hasFailures = false;
+
+        for (const platform of selectedPlatforms) {
+          setUploadProgress(prev => ({ ...prev, [platform]: 'uploading' }));
+          try {
+            console.log(`Starting upload for ${platform}...`);
+            const result = await processPlatformUpload({ videoId, platform });
+            console.log(`${platform} upload success:`, result);
+            setUploadProgress(prev => ({ ...prev, [platform]: 'success' }));
+            results[platform] = result;
+          } catch (err) {
+            console.error(`${platform} upload failed:`, err);
+            setUploadProgress(prev => ({ ...prev, [platform]: 'failed' }));
+            hasFailures = true;
+            // Continue to next platform despite failure
+          }
+        }
+
+        if (hasFailures) {
+          setError('Some platforms failed to upload. Please check the history for details.');
+        } else {
+          setSuccess('Video published successfully to all selected platforms!');
+          alert('Upload complete!');
+        }
+
+        onSuccess?.();
+        // Reset form only if fully successful or user acknowledges
+        if (!hasFailures) {
+          setVideo(null);
+          setThumbnail(null);
+          setThumbnailPreview(null);
+          setTitle('');
+          setDescription('');
+          setTags('');
+          setPublishTime('');
+          setAnalysisData(null);
+          setUploadProgress({});
+        }
+
       } else {
-        // Standard file upload
+        // --- LEGACY DIRECT UPLOAD FLOW (Fallback) ---
         const formData = new FormData();
         formData.append('file', video);
         if (thumbnail) {
@@ -248,41 +300,27 @@ export default function UploadForm({ onSuccess }) {
         formData.append('platforms', JSON.stringify(platforms));
         formData.append('videoType', 'long');
 
-        response = await uploadVideo(formData);
+        const response = await uploadVideo(formData);
+        console.log('Upload response:', response);
+
+        if (response?.tiktok?.status === 'success') {
+          alert(response.tiktok.message || 'Video uploaded to TikTok as draft.');
+        }
+
+        onSuccess?.();
+        setVideo(null);
+        setThumbnail(null);
+        setThumbnailPreview(null);
+        setTitle('');
+        setDescription('');
+        setTags('');
+        setPublishTime('');
+        setAnalysisData(null);
       }
-
-      console.log('Upload response:', response); // Debug log
-
-      // Handle TikTok upload response
-      if (response?.tiktok?.status === 'success') {
-        alert(response.tiktok.message || 'Video uploaded to TikTok as draft. Please check your TikTok app drafts to publish.');
-      } else if (response?.tiktok?.status === 'error') {
-        setError(`TikTok upload failed: ${response.tiktok.message}`);
-      }
-
-      onSuccess?.();
-      // Reset form
-      setVideo(null);
-      setThumbnail(null);
-      setThumbnailPreview(null);
-      setTitle('');
-      setDescription('');
-      setTags('');
-      setPublishTime('');
-      setAnalysisData(null);
     } catch (err) {
       console.error('Upload error:', err);
       const errorMessage = err?.response?.data?.details || err.message || 'Upload failed';
-
-      // Check for sandbox mode error
-      if (errorMessage.includes('sandbox mode')) {
-        setError(
-          'TikTok uploads are not available in sandbox mode. The app needs to be approved by TikTok first. ' +
-          'Other platforms will still work normally.'
-        );
-      } else {
-        setError(errorMessage);
-      }
+      setError(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -514,9 +552,16 @@ export default function UploadForm({ onSuccess }) {
               disabled={uploading || !Object.values(platforms).some(Boolean) || !video}
             >
               {uploading ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <span className="spinner" /> Uploading...
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                    <span className="spinner" /> Processing...
+                  </span>
+                  {Object.entries(uploadProgress).map(([platform, status]) => (
+                    <div key={platform} style={{ fontSize: '10px', marginTop: 2 }}>
+                      {platform}: {status === 'uploading' ? '⏳' : status === 'success' ? '✅' : '❌'}
+                    </div>
+                  ))}
+                </div>
               ) : '📤 Upload & Schedule'}
             </button>
           </div>

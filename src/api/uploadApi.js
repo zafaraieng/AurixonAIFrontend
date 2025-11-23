@@ -1,40 +1,50 @@
 import axios from 'axios';
+
 const API = import.meta.env.VITE_API_URL || 'https://aurixon-ai-backend.vercel.app';
+
+const api = axios.create({
+  baseURL: `${API}/api`,
+  withCredentials: true
+});
 
 export const validateVideo = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await axios.post(`${API}/api/validate`, formData, {
-    withCredentials: true,
+  const res = await api.post('/validate', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
   return res.data;
 };
 
 export const uploadVideo = async (payload, isJson = false) => {
-  const endpoint = isJson ? `${API}/api/save-video` : `${API}/api/uploads`;
+  const endpoint = isJson ? '/save-video' : '/uploads';
   const headers = isJson
     ? { 'Content-Type': 'application/json' }
     : { 'Content-Type': 'multipart/form-data' };
 
-  const res = await axios.post(endpoint, payload, {
-    withCredentials: true,
-    headers
-  });
+  const res = await api.post(endpoint, payload, { headers });
+  return res.data;
+};
+
+export const saveVideoMetadata = async (data) => {
+  const res = await api.post('/save-metadata', data);
+  return res.data;
+};
+
+export const processPlatformUpload = async (data) => {
+  const res = await api.post('/process-platform', data);
   return res.data;
 };
 
 export const getSchedules = async () => {
-  const res = await axios.get(`${API}/api/schedules`, { withCredentials: true });
+  const res = await api.get('/schedules');
   return res.data;
 };
 
 export async function fetchUploads() {
   try {
-    const res = await axios.get(`${API}/api/uploads`, {
-      withCredentials: true
-    });
+    const res = await api.get('/uploads');
     console.log('API Response:', res.data); // Debug log
     return res.data;
   } catch (error) {
@@ -44,13 +54,10 @@ export async function fetchUploads() {
 }
 
 export async function deleteUpload(id) {
-  const res = await fetch(`${API}/api/uploads/${id}`, {
-    method: 'DELETE',
-    credentials: 'include'
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`Failed to delete upload: ${res.status} ${text}`);
+  try {
+    const res = await api.delete(`/uploads/${id}`);
+    return res.data;
+  } catch (error) {
+    throw new Error(`Failed to delete upload: ${error.message}`);
   }
-  return res.json();
 }
